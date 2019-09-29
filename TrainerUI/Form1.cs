@@ -22,6 +22,7 @@ namespace MnistTestUi
         public Form1()
 		{
 			InitializeComponent();
+            label4.Text = "";
 			NeuralNetwork = NeuralNetwork.Load("LeakyRelu_LR05_HL201.bin");
 		}
 		
@@ -39,8 +40,7 @@ namespace MnistTestUi
 		{
 			drawPanel.Clear();
 			multiTokenDrawPanel1.Clear();
-			textBoxParsedNumber.Text = "";
-			textBoxParsedDigit.Text = "";
+            label4.Text = "";
 		}
 
 		private async void button1_Click(object sender, EventArgs e)
@@ -48,7 +48,7 @@ namespace MnistTestUi
 			if (NeuralNetwork == null)
 				return;
 
-			var bytes = drawPanel.PreprocessImage(drawPanel.Image, new Size(28,28), true);
+			var bytes = drawPanel.PreprocessImage(drawPanel.Image, new Size(28,28), false);
 			if (bytes != null)
 			{
 				var input = bytes.Select(b => (double)b / 256).ToArray();
@@ -62,8 +62,8 @@ namespace MnistTestUi
 				var r = NeuralNetwork.Query(sample).ToList();
 				var max = r.Max();
 				var idx = r.IndexOf(max);
-				textBoxParsedDigit.Text = idx.ToString() + "\r\n";
 
+                label4.Text = idx.ToString();
 
                 //using (StreamWriter writetext = new StreamWriter("gen.t", true))
                 //{
@@ -93,33 +93,43 @@ namespace MnistTestUi
                     
                 }
 
-                //var client = new RestClient("http://192.168.1.102:8181/");
-                //var request = new RestRequest(Method.POST);
-                //request.RequestFormat = DataFormat.Json;
-                //var arrayOfDigits = new String[] { sampled };
-                //request.AddJsonBody(new { digits = arrayOfDigits });
-                //IRestResponse response = client.Execute(request);
+                var client = new RestClient("http://192.168.1.102:8181/");
+                var request = new RestRequest(Method.POST);
+                request.RequestFormat = DataFormat.Json;
+                var arrayOfDigits = new String[] { sampled };
+                request.AddJsonBody(new { digits = arrayOfDigits });
+                IRestResponse response = client.Execute(request);
 
                 var s = "";
 				for (int i = 0; i < 10; i++)
 					s += $"{i}: {r[i].ToString("0.000")}\r\n";
-				textBoxParsedDigit.Text += s;
 			}
+		}
+	
+		private void showButton_Click(object sender, EventArgs e)
+		{
+			var form = new MnistImagesForm();
+			form.NeuralNetwork = this.NeuralNetwork;
+			form.Show(this);
+		}
 
-			var numberBytes = multiTokenDrawPanel1.GetNumberBytes(new Size(28, 28));
-			if (numberBytes == null)
-				return;
-			var sb = new StringBuilder();
+        private void button2_Click(object sender, EventArgs e)
+        {
+            var numberBytes = multiTokenDrawPanel1.GetNumberBytes(new Size(28, 28));
+         
+            if (numberBytes == null || numberBytes.Count == 0)
+                return;
+            var sb = new StringBuilder();
             var arrayOfDigits2 = new List<string>();
             foreach (var byts in numberBytes)
-			{
-				var input = byts.Select(b => (double)b / 256).ToArray();
-				var sample = new Sample { Data = input };
+            {
+                var input = byts.Select(b => (double)b / 256).ToArray();
+                var sample = new Sample { Data = input };
 
-				var r = NeuralNetwork.Query(sample).ToList();
-				var max = r.Max();
-				var idx = r.IndexOf(max);
-				sb.Append(idx.ToString());
+                var r = NeuralNetwork.Query(sample).ToList();
+                var max = r.Max();
+                var idx = r.IndexOf(max);
+                sb.Append(idx.ToString());
 
                 var sampledMulti = idx.ToString();
                 for (int index = 0; index < byts.Length; index++)
@@ -133,21 +143,14 @@ namespace MnistTestUi
                 arrayOfDigits2.Add(sampledMulti);
 
             }
-            Console.WriteLine(arrayOfDigits2[1]);
+            
             var client = new RestClient("http://192.168.1.102:8181/");
             var request = new RestRequest(Method.POST);
             request.RequestFormat = DataFormat.Json;
-            
+
             request.AddJsonBody(new { digits = arrayOfDigits2.ToArray() });
             IRestResponse response = client.Execute(request);
-            textBoxParsedNumber.Text = sb.ToString();
-		}
-	
-		private void showButton_Click(object sender, EventArgs e)
-		{
-			var form = new MnistImagesForm();
-			form.NeuralNetwork = this.NeuralNetwork;
-			form.Show(this);
-		}
-	}
+            label4.Text = sb.ToString();
+        }
+    }
 }
