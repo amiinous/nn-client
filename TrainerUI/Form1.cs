@@ -11,12 +11,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Net.Http;
+using RestSharp;
 
 namespace MnistTestUi
 {
 	public partial class Form1 : Form
 	{
-		public Form1()
+        private static readonly HttpClient client = new HttpClient();
+        public Form1()
 		{
 			InitializeComponent();
 			NeuralNetwork = NeuralNetwork.Load("LeakyRelu_LR05_HL201.bin");
@@ -40,7 +43,7 @@ namespace MnistTestUi
 			textBoxParsedDigit.Text = "";
 		}
 
-		private void button1_Click(object sender, EventArgs e)
+		private async void button1_Click(object sender, EventArgs e)
 		{
 			if (NeuralNetwork == null)
 				return;
@@ -61,21 +64,41 @@ namespace MnistTestUi
 				var idx = r.IndexOf(max);
 				textBoxParsedDigit.Text = idx.ToString() + "\r\n";
 
-                using (StreamWriter writetext = new StreamWriter("gen.t", true))
-                {
-                    writetext.Write(idx.ToString());
-                    //writetext.Write("0"); //In future the software NN will be removed so the idx is meaningless
-                    for (int index = 0; index < bytes.Length; index++)
-                    {
-                        var val = bytes[index];
 
-                        if(val!=0)
-                        {
-                            writetext.Write(' ' + (index+1).ToString() + ':' + bytes[index].ToString());
-                        }
-                    }
-                    writetext.WriteLine("");
+                //using (StreamWriter writetext = new StreamWriter("gen.t", true))
+                //{
+                    
+                //    writetext.Write(idx.ToString());
+                //    writetext.Write("0"); //In future the software NN will be removed so the idx is meaningless
+                //    for (int index = 0; index < bytes.Length; index++)
+                //    {
+                //        var val = bytes[index];
+
+                //        if(val!=0)
+                //        {
+                //            writetext.Write(' ' + (index+1).ToString() + ':' + bytes[index].ToString());
+                            
+                //        }
+                //    }
+                //    writetext.WriteLine("");
+                //}
+
+                var sampled = idx.ToString();
+                for (int index = 0; index < bytes.Length; index++)
+                {
+                    var val = bytes[index];
+
+                    if (val != 0)
+                        sampled += ' ' + (index + 1).ToString() + ':' + bytes[index].ToString();
+                    
                 }
+
+                //var client = new RestClient("http://192.168.1.102:8181/");
+                //var request = new RestRequest(Method.POST);
+                //request.RequestFormat = DataFormat.Json;
+                //var arrayOfDigits = new String[] { sampled };
+                //request.AddJsonBody(new { digits = arrayOfDigits });
+                //IRestResponse response = client.Execute(request);
 
                 var s = "";
 				for (int i = 0; i < 10; i++)
@@ -87,7 +110,8 @@ namespace MnistTestUi
 			if (numberBytes == null)
 				return;
 			var sb = new StringBuilder();
-			foreach (var byts in numberBytes)
+            var arrayOfDigits2 = new List<string>();
+            foreach (var byts in numberBytes)
 			{
 				var input = byts.Select(b => (double)b / 256).ToArray();
 				var sample = new Sample { Data = input };
@@ -96,8 +120,27 @@ namespace MnistTestUi
 				var max = r.Max();
 				var idx = r.IndexOf(max);
 				sb.Append(idx.ToString());
-			}
-			textBoxParsedNumber.Text = sb.ToString();
+
+                var sampledMulti = idx.ToString();
+                for (int index = 0; index < byts.Length; index++)
+                {
+                    var val = byts[index];
+
+                    if (val != 0)
+                        sampledMulti += ' ' + (index + 1).ToString() + ':' + byts[index].ToString();
+
+                }
+                arrayOfDigits2.Add(sampledMulti);
+
+            }
+            Console.WriteLine(arrayOfDigits2[1]);
+            var client = new RestClient("http://192.168.1.102:8181/");
+            var request = new RestRequest(Method.POST);
+            request.RequestFormat = DataFormat.Json;
+            
+            request.AddJsonBody(new { digits = arrayOfDigits2.ToArray() });
+            IRestResponse response = client.Execute(request);
+            textBoxParsedNumber.Text = sb.ToString();
 		}
 	
 		private void showButton_Click(object sender, EventArgs e)
