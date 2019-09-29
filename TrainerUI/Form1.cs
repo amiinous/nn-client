@@ -48,22 +48,18 @@ namespace MnistTestUi
 			if (NeuralNetwork == null)
 				return;
 
-			var bytes = drawPanel.PreprocessImage(drawPanel.Image, new Size(28,28), false);
+            
+            var bytes = drawPanel.PreprocessImage(drawPanel.Image, new Size(28,28), false);
 			if (bytes != null)
 			{
-				var input = bytes.Select(b => (double)b / 256).ToArray();
-               
-                Console.WriteLine(String.Join(",", bytes.Select(p => p.ToString()).ToArray()));
-                Console.WriteLine(input.Length);
-
-                
+                label4.Text = ".";
+                var input = bytes.Select(b => (double)b / 256).ToArray();
 
                 var sample = new Sample	{ Data = input };
 				var r = NeuralNetwork.Query(sample).ToList();
 				var max = r.Max();
 				var idx = r.IndexOf(max);
 
-                label4.Text = idx.ToString();
 
                 //using (StreamWriter writetext = new StreamWriter("gen.t", true))
                 //{
@@ -93,12 +89,14 @@ namespace MnistTestUi
                     
                 }
 
-                var client = new RestClient("http://192.168.1.102:8181/");
+                var client = new RestClient("http://192.168.1.177:8181/");
                 var request = new RestRequest(Method.POST);
                 request.RequestFormat = DataFormat.Json;
                 var arrayOfDigits = new String[] { sampled };
                 request.AddJsonBody(new { digits = arrayOfDigits });
-                IRestResponse response = client.Execute(request);
+                var cancellationTokenSource = new System.Threading.CancellationTokenSource();
+                var response = await client.ExecuteTaskAsync(request, cancellationTokenSource.Token);
+                label4.Text = response.Content;
 
                 var s = "";
 				for (int i = 0; i < 10; i++)
@@ -113,12 +111,14 @@ namespace MnistTestUi
 			form.Show(this);
 		}
 
-        private void button2_Click(object sender, EventArgs e)
+        private async void button2_Click(object sender, EventArgs e)
         {
+            
             var numberBytes = multiTokenDrawPanel1.GetNumberBytes(new Size(28, 28));
          
             if (numberBytes == null || numberBytes.Count == 0)
                 return;
+            label4.Text = ".";
             var sb = new StringBuilder();
             var arrayOfDigits2 = new List<string>();
             foreach (var byts in numberBytes)
@@ -144,13 +144,15 @@ namespace MnistTestUi
 
             }
             
-            var client = new RestClient("http://192.168.1.102:8181/");
+            var client = new RestClient("http://192.168.1.177:8181/");
             var request = new RestRequest(Method.POST);
             request.RequestFormat = DataFormat.Json;
 
             request.AddJsonBody(new { digits = arrayOfDigits2.ToArray() });
-            IRestResponse response = client.Execute(request);
-            label4.Text = sb.ToString();
+            var cancellationTokenSource = new System.Threading.CancellationTokenSource();
+            var response = await client.ExecuteTaskAsync(request, cancellationTokenSource.Token);
+
+            label4.Text = response.Content;
         }
     }
 }
